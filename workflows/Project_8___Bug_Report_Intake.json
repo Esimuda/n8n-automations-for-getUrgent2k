@@ -1,0 +1,469 @@
+{
+ "name": "Project 8 - Bug Report Intake",
+ "nodes": [
+  {
+   "id": "812efb30-1183-4c93-a1ea-570625d2f0bf",
+   "name": "Webhook",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "bug-report",
+    "responseMode": "onReceived",
+    "options": {}
+   },
+   "webhookId": "0a250e7e-ccd0-5694-a978-f524b4d20146"
+  },
+  {
+   "id": "ec8b2fa5-a64c-41bc-a31f-008ca59b6209",
+   "name": "Normalize Tally",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "// Flatten Tally payload {data:{fields:[{label,value,options}]}} or plain JSON\nfunction flat(b){ if(b&&b.data&&Array.isArray(b.data.fields)){const o={};for(const f of b.data.fields){let v=f.value;if(Array.isArray(v)&&f.options){v=v.map(id=>(f.options.find(x=>x.id===id)||{}).text||id);if(f.type==='DROPDOWN'||f.type==='MULTIPLE_CHOICE')v=v[0];}o[f.label]=v;}return o;} return b||{}; }\n\nconst d=flat($input.first().json.body||$input.first().json);return [{json:{Feature:d.Feature||d.feature||'',Severity:d.Severity||d.severity||'Low'}}];"
+   }
+  },
+  {
+   "id": "ebbe66c8-f7a4-4e65-bec9-b9d730e9cc5e",
+   "name": "Airtable Create",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblvYK2lpXgT1zYPK"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "Feature": "={{$json.Feature}}",
+      "Severity": "={{$json.Severity}}",
+      "Status": "Open",
+      "Reported Date": "={{$now.toISODate()}}"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "178c0b0e-f286-4f61-ad53-e0dd68394a54",
+   "name": "Email Message",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "e2e5b1b0-fe5b-4bd9-9861-dff5c869e412",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "43ded1f4-8a65-4c90-9d59-05acdc202c19",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Notification — Project 8 - Bug Report Intake"
+      },
+      {
+       "id": "31e00a27-3bad-44a6-ab47-ab7d02d7f5c0",
+       "name": "text",
+       "type": "string",
+       "value": "=🐞 New bug reported ({{($json.fields||$json).Severity}}): {{($json.fields||$json).Feature}}"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "97e12d53-164c-4ba1-b804-d6df7c597484",
+   "name": "Email Message → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    880,
+    120
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 8 - Bug Report Intake",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "9d15a3d8-f272-4d2b-bf37-a4f7c9a1281f",
+   "name": "Airtable Trigger (form)",
+   "type": "n8n-nodes-base.airtableTrigger",
+   "typeVersion": 1,
+   "position": [
+    1100,
+    0
+   ],
+   "parameters": {
+    "pollTimes": {
+     "item": [
+      {
+       "mode": "everyMinute"
+      }
+     ]
+    },
+    "authentication": "airtableTokenApi",
+    "baseId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "tableId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblvYK2lpXgT1zYPK"
+    },
+    "triggerField": "Created",
+    "additionalFields": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   }
+  },
+  {
+   "id": "439831dc-fb6c-4ace-987e-acfb0d76fa85",
+   "name": "From Form?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    1320,
+    400
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "e76a94be-eea7-4f2c-9a4b-d04475bd72ef",
+       "leftValue": "={{($json.fields||$json).Status||''}}",
+       "rightValue": "",
+       "operator": {
+        "type": "string",
+        "operation": "empty",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "looseTypeValidation": true,
+    "options": {}
+   }
+  },
+  {
+   "id": "f5a103b9-a7eb-4160-880e-a34cf98126e5",
+   "name": "Stamp Bug",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1540,
+    400
+   ],
+   "parameters": {
+    "operation": "update",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblvYK2lpXgT1zYPK"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "id": "={{$json.id}}",
+      "Status": "Open",
+      "Reported Date": "={{$now.toISODate()}}",
+      "Severity": "={{($json.fields||$json).Severity||'Low'}}"
+     },
+     "matchingColumns": [
+      "id"
+     ],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "2fbde4e3-b132-49fd-befd-191ed2a8ea80",
+   "name": "Email Message (form)",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    1760,
+    400
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "dbbecb34-53d3-4d2f-ac6f-cfc06ba71a7f",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "2b179a13-a017-4a00-9953-cd1c0d5b10d9",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Message (form) — Project 8 - Bug Report Intake"
+      },
+      {
+       "id": "3ad6e5a4-4ea8-4117-8fbc-568edb09195e",
+       "name": "text",
+       "type": "string",
+       "value": "=🐞 New bug reported via form ({{($json.fields||$json).Severity}}): {{($json.fields||$json).Feature}}"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "c910a01c-5d8e-49f5-801f-d9c72f23d0e9",
+   "name": "Email Message (form) → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1980,
+    520
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 8 - Bug Report Intake",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "15438ad4-a9e2-454a-88e6-5a9cff6df0a8",
+   "name": "Note",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    -300
+   ],
+   "parameters": {
+    "content": "Tally 'Bug Report' -> /bug-report",
+    "width": 500,
+    "height": 160
+   }
+  }
+ ],
+ "connections": {
+  "Email Message": {
+   "main": [
+    [
+     {
+      "node": "Email Message → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Webhook": {
+   "main": [
+    [
+     {
+      "node": "Normalize Tally",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Normalize Tally": {
+   "main": [
+    [
+     {
+      "node": "Airtable Create",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Create": {
+   "main": [
+    [
+     {
+      "node": "Email Message",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Email Message (form)": {
+   "main": [
+    [
+     {
+      "node": "Email Message (form) → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Trigger (form)": {
+   "main": [
+    [
+     {
+      "node": "From Form?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "From Form?": {
+   "main": [
+    [
+     {
+      "node": "Stamp Bug",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Stamp Bug": {
+   "main": [
+    [
+     {
+      "node": "Email Message (form)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

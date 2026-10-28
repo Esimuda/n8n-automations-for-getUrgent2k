@@ -1,0 +1,437 @@
+{
+ "name": "Project 7 - Weekly Node Report",
+ "nodes": [
+  {
+   "id": "596dbd73-7f83-4a3c-9bf0-33e80fe2d10b",
+   "name": "Schedule Trigger",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "weeks",
+       "triggerAtDay": [
+        5
+       ],
+       "triggerAtHour": 17
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "7bc1126d-e6c1-4ea1-9a1a-4a860ae57c48",
+   "name": "Airtable Search",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblvp0C0F6NdQvcdm"
+    },
+    "filterByFormula": "IS_AFTER({Week Of}, DATEADD(TODAY(), -7, 'days'))",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "6543631a-b0b1-4a18-80e5-f46d9418e47c",
+   "name": "Metrics",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "return items.map(item=>{const f=(item.json.fields||item.json);\nconst activation=f['Registrations']?Math.round((f['Verified Contributors']/f['Registrations'])*100):0;\nconst completion=f['Tasks Dispatched']?Math.round((f['Tasks Completed']/f['Tasks Dispatched'])*100):0;\nconst productivity=f['Cost']?Number((f['Tasks Completed']/f['Cost']*1000).toFixed(2)):0;\nreturn {json:{id:item.json.id,city:f.City,activation,completion,productivity,margin:(f.Revenue||0)-(f.Cost||0),priorActivation:f['Prior Week Activation %']??null,priorCompletion:f['Prior Week Completion %']??null}}});"
+   }
+  },
+  {
+   "id": "462c7766-904e-49cb-8fba-aaed95ac8e03",
+   "name": "Build Report",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "const l=$input.all().map(i=>`${i.json.city}: activation ${i.json.activation}%, completion ${i.json.completion}%, tasks/₦1k ${i.json.productivity}, margin ₦${i.json.margin}`);return [{json:{text:'📊 Weekly Node Report\\n'+l.join('\\n')}}];"
+   }
+  },
+  {
+   "id": "0e6cdf00-a947-4c36-9003-026d0941aa12",
+   "name": "Email Message",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    880,
+    0
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "08a4093c-31b0-4da7-94b6-8c87b3edbf68",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "ecdc12cb-1a82-48da-a14c-a791ac30bd5e",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Notification — Project 7 - Weekly Node Report"
+      },
+      {
+       "id": "1d64c368-c56d-48a4-8509-ab04bcdebd97",
+       "name": "text",
+       "type": "string",
+       "value": "={{$json.text}}"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "f4f3ad49-8a0e-40eb-a0db-ec6b8904d42e",
+   "name": "Email Message → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1100,
+    120
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 7 - Weekly Node Report",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "d2da396e-6415-4e34-8b96-557c3672d31f",
+   "name": "Activation Drop >15",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    1320,
+    250
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "102c95fe-c00a-4ea0-b974-299332d1aa58",
+       "leftValue": "={{$json.priorActivation !== null && $json.activation < $json.priorActivation - 15}}",
+       "rightValue": true,
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "looseTypeValidation": true,
+    "options": {}
+   }
+  },
+  {
+   "id": "d1b1887c-0bbb-4e1d-8888-4e2db6a25b0c",
+   "name": "Email Underperformance",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    1540,
+    250
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "c9e096a3-6c43-49bd-ac37-1e9e645f9dff",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "2ba22db3-370e-4eed-95a8-72221327bec2",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Underperformance — Project 7 - Weekly Node Report"
+      },
+      {
+       "id": "58de9ab5-354f-49c4-b003-88dfc796f007",
+       "name": "text",
+       "type": "string",
+       "value": "=📉 Underperformance: {{$json.city}} activation {{$json.activation}}% vs prior {{$json.priorActivation}}%"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "3eecc007-6448-4259-bba9-737759dfd7a2",
+   "name": "Email Underperformance → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1760,
+    370
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 7 - Weekly Node Report",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "ff4bad9c-eb44-4120-8304-ee14267c0b92",
+   "name": "Update Prior Week",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1980,
+    450
+   ],
+   "parameters": {
+    "operation": "update",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblvp0C0F6NdQvcdm"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "id": "={{$json.id}}",
+      "Prior Week Activation %": "={{$json.activation}}",
+      "Prior Week Completion %": "={{$json.completion}}"
+     },
+     "matchingColumns": [
+      "id"
+     ],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "eef7cde6-00a4-4907-b8a4-17f386559843",
+   "name": "Note",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    -300
+   ],
+   "parameters": {
+    "content": "Workflow A (report) + Workflow B (underperformance alert) chained after the Code node, per guide 7.3.",
+    "width": 500,
+    "height": 160
+   }
+  }
+ ],
+ "connections": {
+  "Email Message": {
+   "main": [
+    [
+     {
+      "node": "Email Message → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Schedule Trigger": {
+   "main": [
+    [
+     {
+      "node": "Airtable Search",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Search": {
+   "main": [
+    [
+     {
+      "node": "Metrics",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Metrics": {
+   "main": [
+    [
+     {
+      "node": "Build Report",
+      "type": "main",
+      "index": 0
+     },
+     {
+      "node": "Activation Drop >15",
+      "type": "main",
+      "index": 0
+     },
+     {
+      "node": "Update Prior Week",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build Report": {
+   "main": [
+    [
+     {
+      "node": "Email Message",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Email Underperformance": {
+   "main": [
+    [
+     {
+      "node": "Email Underperformance → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Activation Drop >15": {
+   "main": [
+    [
+     {
+      "node": "Email Underperformance",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

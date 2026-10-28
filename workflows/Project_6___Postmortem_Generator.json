@@ -1,0 +1,234 @@
+{
+ "name": "Project 6 - Postmortem Generator (template draft, swap for LLM later)",
+ "nodes": [
+  {
+   "id": "29b40613-29f2-468c-bab3-7b893ccdea47",
+   "name": "Airtable Trigger",
+   "type": "n8n-nodes-base.airtableTrigger",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "pollTimes": {
+     "item": [
+      {
+       "mode": "everyMinute"
+      }
+     ]
+    },
+    "authentication": "airtableTokenApi",
+    "baseId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "tableId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblKRs1e85t7XI9bw"
+    },
+    "triggerField": "Last Modified",
+    "additionalFields": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   }
+  },
+  {
+   "id": "ca2cd884-ce9b-4cda-ab3f-fb619981bd09",
+   "name": "Is Resolved",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "5114b53c-31e6-48fb-bc7e-fbd1831fdf29",
+       "leftValue": "={{($json.fields||$json).Status}}",
+       "rightValue": "Resolved",
+       "operator": {
+        "type": "string",
+        "operation": "equals"
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "looseTypeValidation": true,
+    "options": {}
+   }
+  },
+  {
+   "id": "f30fcfc2-8ef7-4653-8f08-6f79c94fdd78",
+   "name": "No Postmortem Yet",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "4a273509-d6fc-420f-9922-c2839440ae77",
+       "leftValue": "={{($json.fields||$json).Postmortem}}",
+       "rightValue": "",
+       "operator": {
+        "type": "string",
+        "operation": "empty",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "looseTypeValidation": true,
+    "options": {}
+   }
+  },
+  {
+   "id": "082557bd-fbfd-4abe-a33e-2f7ebcf92707",
+   "name": "Postmortem Draft (template)",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "return items.map(i=>{const f=(i.json.fields||i.json);const sevImpact={P1:'Critical — core flow blocked for contributors/clients.',P2:'Significant — degraded operations, workaround needed.',P3:'Minor — limited impact.'}[f.Severity]||'Unassessed.';\nconst t=`POSTMORTEM (template draft — swap for LLM later)\nWhat happened: ${f.Description||'n/a'} (source: ${f.Source||'n/a'}, severity ${f.Severity||'n/a'}, opened ${f['Created Date']||'n/a'}).\nRoot cause: Initial assessment points to ${ {'Failed Payment':'the payment pipeline/SLA queue','Failed Workflow':'an automation or gig-ops process gap','Bug':'a product defect','QA Failure':'submission quality controls','Complaint':'a contributor/client experience gap','Support Form':'a support-reported issue'}[f.Source]||'an unconfirmed cause'}; confirm with owner ${f.Owner||'(unassigned)'}.\nImpact: ${sevImpact}\nResolution: ${f['Resolution Notes']||'See resolution notes.'}\nPrevention: Add a monitor/alert for this failure mode, document the fix in the runbook, and review in the Weekly Operating Review.`;\nreturn {json:{id:i.json.id,draft:t}}});"
+   }
+  },
+  {
+   "id": "01887c8c-3064-4bc6-aa20-21ec79304037",
+   "name": "Airtable Update",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    880,
+    0
+   ],
+   "parameters": {
+    "operation": "update",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblKRs1e85t7XI9bw"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "id": "={{$json.id}}",
+      "Postmortem": "={{$json.draft}}"
+     },
+     "matchingColumns": [
+      "id"
+     ],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "b27cd29e-a55f-48c6-abaa-37a61047d789",
+   "name": "Note",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    -300
+   ],
+   "parameters": {
+    "content": "Code node generates a template postmortem instead of calling Anthropic. Swap 'Postmortem Draft' for HTTP Request to an LLM when a key exists.",
+    "width": 500,
+    "height": 160
+   }
+  }
+ ],
+ "connections": {
+  "Airtable Trigger": {
+   "main": [
+    [
+     {
+      "node": "Is Resolved",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Is Resolved": {
+   "main": [
+    [
+     {
+      "node": "No Postmortem Yet",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "No Postmortem Yet": {
+   "main": [
+    [
+     {
+      "node": "Postmortem Draft (template)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Postmortem Draft (template)": {
+   "main": [
+    [
+     {
+      "node": "Airtable Update",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

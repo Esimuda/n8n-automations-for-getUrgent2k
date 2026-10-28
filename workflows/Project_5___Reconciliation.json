@@ -1,0 +1,244 @@
+{
+ "name": "Project 5 - Reconciliation",
+ "nodes": [
+  {
+   "id": "d91cd571-7e2f-476a-a6df-0848dd1be7bf",
+   "name": "Schedule Trigger",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "days",
+       "triggerAtHour": 7
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "d7a0ac3c-60dd-440e-8956-0b4ed55c9886",
+   "name": "Passed Submissions",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tbl9ZIdFLu40HQfCt"
+    },
+    "filterByFormula": "{QA Status}='Pass'",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": true
+  },
+  {
+   "id": "4b7efb95-bec1-43e3-b801-c4c5c44ea853",
+   "name": "All Payments",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblJEb1wA2PaCAs6V"
+    },
+    "filterByFormula": "",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": true
+  },
+  {
+   "id": "76f7a56b-8748-4f85-8981-926ff8694444",
+   "name": "Reconcile",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "const key=f=>`${(f.Gig||[])[0]}|${(f.Contributor||[])[0]}`;\nconst subs=$('Passed Submissions').all().filter(i=>i.json.id).map(i=>key((i.json.fields||i.json)));\nconst pays=$('All Payments').all().filter(i=>i.json.id).map(i=>key((i.json.fields||i.json)));\nconst cnt={};pays.forEach(k=>cnt[k]=(cnt[k]||0)+1);\nconst noPay=subs.filter(k=>!pays.includes(k)),noPass=[...new Set(pays.filter(k=>!subs.includes(k)))],dups=Object.keys(cnt).filter(k=>cnt[k]>1);\nreturn [{json:{noPay,noPass,dups,text:`🧾 Reconciliation: ${subs.length} passed / ${pays.length} payments\\nPass w/o payment: ${noPay.length}\\nPayment w/o pass: ${noPass.length}\\nDuplicates: ${dups.length}`}}];"
+   }
+  },
+  {
+   "id": "e8d19bca-0f93-467e-a06c-ffa12f487ae6",
+   "name": "Email Message",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    880,
+    0
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "81ef8763-08e2-42bd-aaa7-dbf2b432dd80",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "fc2562db-e3cc-46af-9ef4-50f3066d6cd9",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Notification — Project 5 - Reconciliation"
+      },
+      {
+       "id": "7b442e57-eff0-4f6d-b64c-ae58d6dbb5df",
+       "name": "text",
+       "type": "string",
+       "value": "={{$json.text}}"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "c45c7985-a453-4f97-9781-744242d9fcb9",
+   "name": "Email Message → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1100,
+    120
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 5 - Reconciliation",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  }
+ ],
+ "connections": {
+  "Email Message": {
+   "main": [
+    [
+     {
+      "node": "Email Message → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Schedule Trigger": {
+   "main": [
+    [
+     {
+      "node": "Passed Submissions",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Passed Submissions": {
+   "main": [
+    [
+     {
+      "node": "All Payments",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "All Payments": {
+   "main": [
+    [
+     {
+      "node": "Reconcile",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Reconcile": {
+   "main": [
+    [
+     {
+      "node": "Email Message",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

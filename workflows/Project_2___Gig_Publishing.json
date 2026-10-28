@@ -1,0 +1,264 @@
+{
+ "name": "Project 2 - Gig Publishing",
+ "nodes": [
+  {
+   "id": "e98db9fc-bfbc-42bb-a6e8-216f33f7afe3",
+   "name": "Airtable Trigger",
+   "type": "n8n-nodes-base.airtableTrigger",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "pollTimes": {
+     "item": [
+      {
+       "mode": "everyMinute"
+      }
+     ]
+    },
+    "authentication": "airtableTokenApi",
+    "baseId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "tableId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblSAZtBJD7DuruFS"
+    },
+    "triggerField": "Last Modified",
+    "additionalFields": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   }
+  },
+  {
+   "id": "4fa09c54-d1c2-4d98-8fd2-79c692a04835",
+   "name": "Is Published",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "a0b61f40-a8fe-4066-995f-06dc1dd5dca1",
+       "leftValue": "={{($json.fields||$json).Status}}",
+       "rightValue": "Published",
+       "operator": {
+        "type": "string",
+        "operation": "equals"
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "looseTypeValidation": true,
+    "options": {}
+   }
+  },
+  {
+   "id": "1b3337ca-294d-49fb-a562-305e259bb9aa",
+   "name": "Find Contributors",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblsswkiEY1lsRMBJ"
+    },
+    "filterByFormula": "=AND({City}='{{($json.fields||$json).City}}', FIND('{{($json.fields||$json).Type}}', ARRAYJOIN({Skills})))",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": true
+  },
+  {
+   "id": "37d7ad1b-aedf-429d-9bab-d17715333960",
+   "name": "Summarize",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "const n=$input.all().filter(i=>i.json.id).length;const g=($('Is Published').first().json.fields||$('Is Published').first().json);return [{json:{text:`Gig ${g.Title} published — ${n} eligible contributors found.`}}];"
+   }
+  },
+  {
+   "id": "c82065c3-ac6e-4a90-a3f8-9bfc4e2e013c",
+   "name": "Email Message",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    880,
+    0
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "cec31357-d77f-45fe-9848-e060466c4526",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "0cab0db9-d196-4ec2-b7aa-58d0c3cf3424",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Notification — Project 2 - Gig Publishing"
+      },
+      {
+       "id": "e094f5b3-8d3b-43c0-b3bb-248aa699f1ab",
+       "name": "text",
+       "type": "string",
+       "value": "={{$json.text}}"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "3c365508-55aa-4175-af47-5accad62c0b9",
+   "name": "Email Message → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1100,
+    120
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 2 - Gig Publishing",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  }
+ ],
+ "connections": {
+  "Email Message": {
+   "main": [
+    [
+     {
+      "node": "Email Message → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Trigger": {
+   "main": [
+    [
+     {
+      "node": "Is Published",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Is Published": {
+   "main": [
+    [
+     {
+      "node": "Find Contributors",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Find Contributors": {
+   "main": [
+    [
+     {
+      "node": "Summarize",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Summarize": {
+   "main": [
+    [
+     {
+      "node": "Email Message",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

@@ -1,0 +1,281 @@
+{
+ "name": "Project 1 - Inactivity Segmentation",
+ "nodes": [
+  {
+   "id": "2b4a7980-76e2-4939-a609-482b6fc50067",
+   "name": "Schedule Trigger",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "days",
+       "triggerAtHour": 9
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "7b33bfe0-244b-4c86-87ef-7b39cc05636b",
+   "name": "Airtable Search",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblsswkiEY1lsRMBJ"
+    },
+    "filterByFormula": "IS_BEFORE({Last Active Date}, DATEADD(TODAY(), -30, 'days'))",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "ce282b7e-39ae-45f3-b246-f75ef3857ad5",
+   "name": "Classify",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "return items.map(i=>{const f=(i.json.fields||i.json);const d=(Date.now()-new Date(f['Last Active Date']))/864e5;return {json:{id:i.json.id,name:f.Name,days:Math.round(d),segment:d>=60?'Inactive':'At Risk'}}});"
+   }
+  },
+  {
+   "id": "5a383a20-0a4c-4fb3-b0f6-ab4361d8db66",
+   "name": "Airtable Update",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "operation": "update",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblsswkiEY1lsRMBJ"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "id": "={{$json.id}}",
+      "Segment": "={{$json.segment}}"
+     },
+     "matchingColumns": [
+      "id"
+     ],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "c519894b-d08e-4cd8-92e4-105eeddea229",
+   "name": "Build Digest",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    880,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "const l=$('Classify').all().map(i=>`${i.json.name}: ${i.json.segment} (${i.json.days}d)`);return [{json:{digest:l.join('\\n')||'No inactive contributors'}}];"
+   }
+  },
+  {
+   "id": "3c8f0fec-3524-4724-b406-d50d9a6a09f0",
+   "name": "Email Message",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    1100,
+    0
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "fd98f98d-4a00-45b3-b498-3bca4d65a616",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "836ff351-e4fe-4916-aa15-0bc02cd75dcd",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Notification — Project 1 - Inactivity Segmentation"
+      },
+      {
+       "id": "361d070d-f430-4851-9b63-66f90ac67543",
+       "name": "text",
+       "type": "string",
+       "value": "=Inactivity digest:\n{{$json.digest}}"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "587e3b92-e63d-4178-b174-f2cc7c6c4592",
+   "name": "Email Message → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1320,
+    120
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 1 - Inactivity Segmentation",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  }
+ ],
+ "connections": {
+  "Email Message": {
+   "main": [
+    [
+     {
+      "node": "Email Message → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Schedule Trigger": {
+   "main": [
+    [
+     {
+      "node": "Airtable Search",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Search": {
+   "main": [
+    [
+     {
+      "node": "Classify",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Classify": {
+   "main": [
+    [
+     {
+      "node": "Airtable Update",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Update": {
+   "main": [
+    [
+     {
+      "node": "Build Digest",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build Digest": {
+   "main": [
+    [
+     {
+      "node": "Email Message",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

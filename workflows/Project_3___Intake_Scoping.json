@@ -1,0 +1,407 @@
+{
+ "name": "Project 3 - Intake Scoping (template draft, swap for LLM later)",
+ "nodes": [
+  {
+   "id": "764bbc4a-696f-4128-89ce-04dfece27a7a",
+   "name": "Webhook",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "client-intake",
+    "responseMode": "onReceived",
+    "options": {}
+   },
+   "webhookId": "766988f6-d833-50c1-b9a3-402a4be5c11b"
+  },
+  {
+   "id": "77d950ad-4020-463a-ad33-8cb0460cbe29",
+   "name": "Normalize Tally",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "// Flatten Tally payload {data:{fields:[{label,value,options}]}} or plain JSON\nfunction flat(b){ if(b&&b.data&&Array.isArray(b.data.fields)){const o={};for(const f of b.data.fields){let v=f.value;if(Array.isArray(v)&&f.options){v=v.map(id=>(f.options.find(x=>x.id===id)||{}).text||id);if(f.type==='DROPDOWN'||f.type==='MULTIPLE_CHOICE')v=v[0];}o[f.label]=v;}return o;} return b||{}; }\n\nconst d=flat($input.first().json.body||$input.first().json);const num=v=>Number(String(v||0).replace(/[^0-9.]/g,''))||0;\nreturn [{json:{'Client Name':d['Client Name']||'','Research Objective':d['Research Objective']||'',Location:d['Location']||'','Sample Size Requested':num(d['Sample Size Requested']),'Target Audience':d['Target Audience']||'',Method:d['Method']||'',Deadline:d['Deadline']||null,'Compensation Budget':num(d['Compensation Budget']),'Evidence Requirements':d['Evidence Requirements']||''}}];"
+   }
+  },
+  {
+   "id": "f897b675-3d5c-4ea4-be2e-858773b09241",
+   "name": "Airtable Create",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tbl169BWKS5M54Rfc"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "Client Name": "={{$json['Client Name']}}",
+      "Research Objective": "={{$json['Research Objective']}}",
+      "Location": "={{$json['Location']}}",
+      "Sample Size Requested": "={{$json['Sample Size Requested']}}",
+      "Target Audience": "={{$json['Target Audience']}}",
+      "Method": "={{$json['Method']}}",
+      "Deadline": "={{$json['Deadline']}}",
+      "Compensation Budget": "={{$json['Compensation Budget']}}",
+      "Evidence Requirements": "={{$json['Evidence Requirements']}}",
+      "Status": "Intake"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "4750a1c9-4f79-4220-95ab-1ed4a8097be2",
+   "name": "Scoping Draft (template)",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "const f=($input.first().json.fields||$input.first().json);const n=f['Sample Size Requested']||0;const target=Math.ceil(n*1.25);\nconst ev={'Mystery Shopping':'receipt photo, storefront photo, timed visit notes','Interview':'audio recording + consent, transcript notes','Market Observation':'geotagged photos, price/shelf log','Retailer Verification':'storefront photo with GPS, owner contact, shelf photo','UGC':'original video/photo, usage rights consent'}[f.Method]||'photo evidence + notes';\nconst days=Math.max(3,Math.ceil(target/10)+2);const risk=n>100?'high':n>40?'medium':'low';\nconst why={high:'large sample relative to one-city contributor pool',medium:'moderate sample; may need cross-city recruiting',low:'small sample, well within node capacity'}[risk];\nreturn [{json:{id:$input.first().json.id,draft:`[Template draft — swap for LLM later] Recruit ${target} (${n} + 25% buffer) in ${f.Location||'TBD'} via ${f.Method||'TBD'}. Evidence: ${ev}. Est. duration: ${days} days. Risk: ${risk} — ${why}.`}}];"
+   }
+  },
+  {
+   "id": "f4989745-5c31-45dd-ba00-3ccb7b37e1c7",
+   "name": "Airtable Update",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    880,
+    0
+   ],
+   "parameters": {
+    "operation": "update",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tbl169BWKS5M54Rfc"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "id": "={{$json.id}}",
+      "Scoping Draft": "={{$json.draft}}",
+      "Status": "Scoped"
+     },
+     "matchingColumns": [
+      "id"
+     ],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "fe1cadc7-349a-4d32-b3a9-d8ac713009d2",
+   "name": "Email Message",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    1100,
+    0
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "d3b4935c-519e-4344-b5d7-63d4a08122f7",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "22bd28e4-e474-407a-a5f8-9b4b649e85f6",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Notification — Project 3 - Intake Scoping (template draft, swap for LLM later)"
+      },
+      {
+       "id": "af975b81-9b9d-4801-9b64-dd3be20d0c87",
+       "name": "text",
+       "type": "string",
+       "value": "=New project scoped, please review in Airtable: {{($json.fields||$json)['Client Name']}} ({{$json.id}})"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "512c0f52-f330-4cb0-8a92-0b556645505b",
+   "name": "Email Message → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1320,
+    120
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 3 - Intake Scoping (template draft, swap for LLM later)",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "11ce687b-b6d9-43f6-9670-15b43f117093",
+   "name": "Airtable Trigger (form)",
+   "type": "n8n-nodes-base.airtableTrigger",
+   "typeVersion": 1,
+   "position": [
+    1540,
+    0
+   ],
+   "parameters": {
+    "pollTimes": {
+     "item": [
+      {
+       "mode": "everyMinute"
+      }
+     ]
+    },
+    "authentication": "airtableTokenApi",
+    "baseId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "tableId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tbl169BWKS5M54Rfc"
+    },
+    "triggerField": "Created",
+    "additionalFields": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   }
+  },
+  {
+   "id": "10c61377-7fab-43e9-aad4-76ae3b7ca1c1",
+   "name": "Not Scoped Yet?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    1760,
+    400
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "33eed265-7157-4db1-adf3-cef06ec3c24d",
+       "leftValue": "={{($json.fields||$json)['Scoping Draft']||''}}",
+       "rightValue": "",
+       "operator": {
+        "type": "string",
+        "operation": "empty",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "looseTypeValidation": true,
+    "options": {}
+   }
+  },
+  {
+   "id": "e498b72e-eecf-4f4f-836d-5d1f3d3bee81",
+   "name": "Note",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    -300
+   ],
+   "parameters": {
+    "content": "Webhook /client-intake. Scoping is a Code-node template instead of Anthropic.",
+    "width": 500,
+    "height": 160
+   }
+  }
+ ],
+ "connections": {
+  "Email Message": {
+   "main": [
+    [
+     {
+      "node": "Email Message → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Webhook": {
+   "main": [
+    [
+     {
+      "node": "Normalize Tally",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Normalize Tally": {
+   "main": [
+    [
+     {
+      "node": "Airtable Create",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Create": {
+   "main": [
+    [
+     {
+      "node": "Scoping Draft (template)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Scoping Draft (template)": {
+   "main": [
+    [
+     {
+      "node": "Airtable Update",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Update": {
+   "main": [
+    [
+     {
+      "node": "Email Message",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Trigger (form)": {
+   "main": [
+    [
+     {
+      "node": "Not Scoped Yet?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Not Scoped Yet?": {
+   "main": [
+    [
+     {
+      "node": "Scoping Draft (template)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

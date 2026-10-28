@@ -1,0 +1,176 @@
+{
+ "name": "Project 6 - SLA Escalation",
+ "nodes": [
+  {
+   "id": "6d6f790e-723e-4928-bdc1-594d09732caf",
+   "name": "Schedule Trigger",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "minutes",
+       "minutesInterval": 30
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "984069a0-60b6-4ddb-a357-dc2fa9eb7662",
+   "name": "Airtable Search",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblKRs1e85t7XI9bw"
+    },
+    "filterByFormula": "AND({Status}!='Resolved', IS_BEFORE({SLA Deadline}, NOW()))",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "782f438e-bd3e-4d66-870b-a4ee881c6a44",
+   "name": "Email Message",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "20075b07-175d-4d95-ad64-c14b14bbc379",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "a75c4ce4-63c8-4d71-a327-6ed7763f203b",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Notification — Project 6 - SLA Escalation"
+      },
+      {
+       "id": "0f8c6b6d-fecc-4027-b025-39262f377211",
+       "name": "text",
+       "type": "string",
+       "value": "=⛔ SLA BREACH: {{($json.fields||$json).Severity}} {{($json.fields||$json).Source}} — {{($json.fields||$json).Description}} (owner: {{($json.fields||$json).Owner || 'unassigned'}})"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "982eddeb-aaf7-450b-97c1-6bc472945612",
+   "name": "Email Message → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    660,
+    120
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 6 - SLA Escalation",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  }
+ ],
+ "connections": {
+  "Email Message": {
+   "main": [
+    [
+     {
+      "node": "Email Message → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Schedule Trigger": {
+   "main": [
+    [
+     {
+      "node": "Airtable Search",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Search": {
+   "main": [
+    [
+     {
+      "node": "Email Message",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

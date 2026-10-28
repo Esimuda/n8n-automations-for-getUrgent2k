@@ -1,0 +1,958 @@
+{
+ "name": "Project 4 - Submission QA",
+ "nodes": [
+  {
+   "id": "2f3139a8-e9e6-4311-aaac-04ae5fcc0c4a",
+   "name": "Webhook",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "submit-evidence",
+    "responseMode": "onReceived",
+    "options": {}
+   },
+   "webhookId": "b92d9546-d62f-5d76-ac51-d87114ad9f53"
+  },
+  {
+   "id": "9bdb64e5-8e59-44ac-a86a-ba87a87c904b",
+   "name": "Normalize Tally",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "// Flatten Tally payload {data:{fields:[{label,value,options}]}} or plain JSON\nfunction flat(b){ if(b&&b.data&&Array.isArray(b.data.fields)){const o={};for(const f of b.data.fields){let v=f.value;if(Array.isArray(v)&&f.options){v=v.map(id=>(f.options.find(x=>x.id===id)||{}).text||id);if(f.type==='DROPDOWN'||f.type==='MULTIPLE_CHOICE')v=v[0];}o[f.label]=v;}return o;} return b||{}; }\n\nconst d=flat($input.first().json.body||$input.first().json);\nconst ev=d['Evidence']||d['Evidence upload']||d.evidence;const evUrl=Array.isArray(ev)?(ev[0]&&ev[0].url):ev;\nreturn [{json:{gigId:(d['Gig ID']||d.gigId||'').trim(),contributorId:(d['Contributor ID']||d.contributorId||'').trim(),evidence:evUrl||'',notes:d['Notes']||d.notes||''}}];"
+   }
+  },
+  {
+   "id": "edcb48ea-4d51-4d70-8636-6095422f06e4",
+   "name": "Airtable Create",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tbl9ZIdFLu40HQfCt"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "Gig": "={{[$json.gigId]}}",
+      "Contributor": "={{[$json.contributorId]}}",
+      "Evidence": "={{$json.evidence?[{url:$json.evidence}]:[]}}",
+      "Notes": "={{$json.notes}}",
+      "Submission Date": "={{$now.toISODate()}}",
+      "QA Status": "Pending"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "8053faee-ab54-4e0d-8c0f-f4770dd83d99",
+   "name": "Webhook Prep",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "const n=$('Normalize Tally').first().json;return [{json:{...n,id:$input.first().json.id}}];"
+   }
+  },
+  {
+   "id": "24770049-51ca-421a-8d0c-3a2ad949cc6a",
+   "name": "QA Input",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    880,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "return $input.all();"
+   }
+  },
+  {
+   "id": "9c8d3882-ce49-4a4c-b4c1-dff8fbd46919",
+   "name": "Get Gig",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1100,
+    0
+   ],
+   "parameters": {
+    "operation": "get",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblSAZtBJD7DuruFS"
+    },
+    "id": "={{$('QA Input').first().json.gigId}}",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "8ef3d485-efcd-4584-a318-27059a923b56",
+   "name": "QA Checks",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1320,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "const n=$('QA Input').first().json;const raw=$input.first().json;const gig=raw.fields||raw;\nconst checks={hasEvidence:!!n.evidence,withinDeadline:!gig['Deadline']||new Date().toISOString().slice(0,10)<=gig['Deadline']};\nlet status='Pass';if(!checks.hasEvidence)status='Major Issue';else if(!checks.withinDeadline)status='Suspicious';else if(!n.notes)status='Minor Issue';\nreturn [{json:{id:n.id,status,checks,gigId:n.gigId,contributorId:n.contributorId,compensation:gig['Compensation']||0,gigTitle:gig.Title,city:gig.City,type:gig.Type}}];"
+   }
+  },
+  {
+   "id": "e3c2da89-408a-426b-b5f0-9947adbea927",
+   "name": "Update QA Status",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1540,
+    0
+   ],
+   "parameters": {
+    "operation": "update",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tbl9ZIdFLu40HQfCt"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "id": "={{$json.id}}",
+      "QA Status": "={{$json.status}}"
+     },
+     "matchingColumns": [
+      "id"
+     ],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "cfb85ff9-1272-4233-8097-409660e588d9",
+   "name": "Restore QA",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1760,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "return [{json:$('QA Checks').first().json}];"
+   }
+  },
+  {
+   "id": "9c9ec57c-c03a-4c20-a982-f5511a09d9f0",
+   "name": "Route QA",
+   "type": "n8n-nodes-base.switch",
+   "typeVersion": 3.2,
+   "position": [
+    1980,
+    0
+   ],
+   "parameters": {
+    "rules": {
+     "values": [
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "loose",
+         "version": 2
+        },
+        "conditions": [
+         {
+          "id": "55e6dce2-bae7-4525-8830-e626de6bb70c",
+          "leftValue": "={{$json.status}}",
+          "rightValue": "Pass",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "Pass"
+      },
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "loose",
+         "version": 2
+        },
+        "conditions": [
+         {
+          "id": "e09c58bf-1f25-4618-b89c-e5e2066f7ad1",
+          "leftValue": "={{$json.status}}",
+          "rightValue": "Minor Issue",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "Minor Issue"
+      },
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "loose",
+         "version": 2
+        },
+        "conditions": [
+         {
+          "id": "dd7b7bfe-fdd4-4102-90e4-ef31220bc4e1",
+          "leftValue": "={{$json.status}}",
+          "rightValue": "Major Issue",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "Major Issue"
+      },
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "loose",
+         "version": 2
+        },
+        "conditions": [
+         {
+          "id": "bf3eb6ed-f7e0-483b-a93c-486c35a3dd8e",
+          "leftValue": "={{$json.status}}",
+          "rightValue": "Suspicious",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "Suspicious"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "87a42261-6120-43cc-ac10-18abc6eca503",
+   "name": "Create Payment (P5 A)",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    2200,
+    200
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblJEb1wA2PaCAs6V"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "Gig": "={{[$json.gigId]}}",
+      "Contributor": "={{[$json.contributorId]}}",
+      "Base Amount": "={{$json.compensation}}",
+      "Bonus": "0",
+      "Deductions": "0",
+      "Status": "Pending",
+      "Date Queued": "={{$now.toISODate()}}"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "ef54e1cc-f813-41e9-9f85-850f8ce03550",
+   "name": "Email Correction",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    2420,
+    400
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "df5ee883-98cc-49ee-b492-9196ccc35314",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "c5f117b1-a9f1-45a2-9613-245e9997d1a6",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Correction — Project 4 - Submission QA"
+      },
+      {
+       "id": "56be1f2e-0a64-4422-9acb-52ea8384fd06",
+       "name": "text",
+       "type": "string",
+       "value": "=Submission {{$json.id}} for {{$json.gigTitle}} needs a small correction (add notes/details)."
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "a9896504-89e8-4f82-bbbe-30039d427965",
+   "name": "Email Correction → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    2640,
+    520
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 4 - Submission QA",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "51395085-71d0-43da-ab92-e022392c02b2",
+   "name": "Email Rejection",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    2860,
+    600
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "1728c7e1-e7ef-4993-a7d5-4b92d7d69996",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "4a8cec0e-d10f-433b-896c-aa2a5c5da8f9",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Rejection — Project 4 - Submission QA"
+      },
+      {
+       "id": "d5193b7b-b75d-453a-8fdb-968bbdbade15",
+       "name": "text",
+       "type": "string",
+       "value": "=Submission {{$json.id}} rejected — no evidence. Finding replacement."
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "9d858bd9-025a-4477-9fa1-ff379933eb42",
+   "name": "Email Rejection → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    3080,
+    720
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 4 - Submission QA",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "98fd11c6-18de-47a9-ae10-d66f74612c00",
+   "name": "Find Replacement",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    3300,
+    600
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblsswkiEY1lsRMBJ"
+    },
+    "filterByFormula": "=AND({City}='{{$('Restore QA').first().json.city}}', FIND('{{$('Restore QA').first().json.type}}', ARRAYJOIN({Skills})))",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "e54012b7-36fc-4e7c-83e7-6309dcc560ca",
+   "name": "Email Suspicious",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    3520,
+    800
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "16b52679-dd25-4e31-96ba-583d86053aa0",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "928c805f-1870-4471-9296-ad7161dec32a",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Suspicious — Project 4 - Submission QA"
+      },
+      {
+       "id": "c0d8573d-2aa1-49d9-8f5f-c43a6aeb67b8",
+       "name": "text",
+       "type": "string",
+       "value": "=🚩 Suspicious submission {{$json.id}} ({{$json.gigTitle}}) — submitted after deadline. Investigate."
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "9e10647b-5a16-4a9e-aacc-d511c5db22d9",
+   "name": "Email Suspicious → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    3740,
+    920
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 4 - Submission QA",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "b5506491-2392-4cff-88fd-5b7a8db20629",
+   "name": "Airtable Trigger (form)",
+   "type": "n8n-nodes-base.airtableTrigger",
+   "typeVersion": 1,
+   "position": [
+    3960,
+    0
+   ],
+   "parameters": {
+    "pollTimes": {
+     "item": [
+      {
+       "mode": "everyMinute"
+      }
+     ]
+    },
+    "authentication": "airtableTokenApi",
+    "baseId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "tableId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tbl9ZIdFLu40HQfCt"
+    },
+    "triggerField": "Created",
+    "additionalFields": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   }
+  },
+  {
+   "id": "ce15f377-2411-4e71-941a-6726f5cdfd2d",
+   "name": "Needs QA?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    4180,
+    1000
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "88982dfc-fd23-490d-a9e0-81d7440264a7",
+       "leftValue": "={{['','Pending'].includes(($json.fields||$json)['QA Status']||'')}}",
+       "rightValue": true,
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "looseTypeValidation": true,
+    "options": {}
+   }
+  },
+  {
+   "id": "68e8e42f-996d-40f8-b7dc-8207141ef861",
+   "name": "Form Prep",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    4400,
+    1000
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "const it=$input.first().json;const f=it.fields||it;const ev=f.Evidence;\nreturn [{json:{id:it.id,gigId:(f.Gig||[])[0]||'',contributorId:(f.Contributor||[])[0]||'',evidence:Array.isArray(ev)?((ev[0]&&ev[0].url)||''):(ev||''),notes:f.Notes||''}}];"
+   }
+  },
+  {
+   "id": "9cd2cc6c-9f18-43cf-a323-ceadb43adf9f",
+   "name": "Note",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    -300
+   ],
+   "parameters": {
+    "content": "Webhook /submit-evidence. Body: gigId (rec...), contributorId (rec...), evidence (url), notes. Pass branch = Project 5 Workflow A (Payment Calculation).",
+    "width": 500,
+    "height": 160
+   }
+  }
+ ],
+ "connections": {
+  "Webhook": {
+   "main": [
+    [
+     {
+      "node": "Normalize Tally",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Normalize Tally": {
+   "main": [
+    [
+     {
+      "node": "Airtable Create",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Create": {
+   "main": [
+    [
+     {
+      "node": "Webhook Prep",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Webhook Prep": {
+   "main": [
+    [
+     {
+      "node": "QA Input",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "QA Input": {
+   "main": [
+    [
+     {
+      "node": "Get Gig",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Get Gig": {
+   "main": [
+    [
+     {
+      "node": "QA Checks",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "QA Checks": {
+   "main": [
+    [
+     {
+      "node": "Update QA Status",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Update QA Status": {
+   "main": [
+    [
+     {
+      "node": "Restore QA",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Restore QA": {
+   "main": [
+    [
+     {
+      "node": "Route QA",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Route QA": {
+   "main": [
+    [
+     {
+      "node": "Create Payment (P5 A)",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Email Correction",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Email Rejection",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Email Suspicious",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Email Correction": {
+   "main": [
+    [
+     {
+      "node": "Email Correction → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Email Rejection": {
+   "main": [
+    [
+     {
+      "node": "Email Rejection → Outbox",
+      "type": "main",
+      "index": 0
+     },
+     {
+      "node": "Find Replacement",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Email Suspicious": {
+   "main": [
+    [
+     {
+      "node": "Email Suspicious → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Trigger (form)": {
+   "main": [
+    [
+     {
+      "node": "Needs QA?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Needs QA?": {
+   "main": [
+    [
+     {
+      "node": "Form Prep",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Form Prep": {
+   "main": [
+    [
+     {
+      "node": "QA Input",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

@@ -1,0 +1,658 @@
+{
+ "name": "Project 8 - Weekly Operating Review (template draft, swap for LLM later)",
+ "nodes": [
+  {
+   "id": "13e14f3b-0f03-4c7a-8ed6-3061f4542372",
+   "name": "Schedule Trigger",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "weeks",
+       "triggerAtDay": [
+        5
+       ],
+       "triggerAtHour": 17
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "fb3d8717-9f0d-460d-afb5-622b6a98d25f",
+   "name": "Merge",
+   "type": "n8n-nodes-base.merge",
+   "typeVersion": 3.1,
+   "position": [
+    220,
+    300
+   ],
+   "parameters": {
+    "numberInputs": 6
+   }
+  },
+  {
+   "id": "1e3283d3-ff7d-429c-bdc5-d0e27dd1e746",
+   "name": "At-Risk Gigs",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblSAZtBJD7DuruFS"
+    },
+    "filterByFormula": "",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": true
+  },
+  {
+   "id": "a7d4f423-3569-406c-8b9b-f0d85e205594",
+   "name": "Tag At-Risk Gigs",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "return $input.all().filter(i=>i.json.id).map(i=>({json:{section:\"At-Risk Gigs\",...(i.json.fields||i.json),_id:i.json.id}})).concat($input.all().filter(i=>i.json.id).length?[]:[{json:{section:\"At-Risk Gigs\",_empty:true}}]);"
+   }
+  },
+  {
+   "id": "ddbe809f-4260-4301-97cb-b35be591339a",
+   "name": "Overdue Payments",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    880,
+    120
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblJEb1wA2PaCAs6V"
+    },
+    "filterByFormula": "",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": true
+  },
+  {
+   "id": "e884a13f-2ce3-4308-b1cf-83cc6ba26a80",
+   "name": "Tag Overdue Payments",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1100,
+    120
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "return $input.all().filter(i=>i.json.id).map(i=>({json:{section:\"Overdue Payments\",...(i.json.fields||i.json),_id:i.json.id}})).concat($input.all().filter(i=>i.json.id).length?[]:[{json:{section:\"Overdue Payments\",_empty:true}}]);"
+   }
+  },
+  {
+   "id": "9820f455-3d5b-4435-8b71-040e7c7f6ebb",
+   "name": "Open P1-P2 Incidents",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1320,
+    240
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblKRs1e85t7XI9bw"
+    },
+    "filterByFormula": "",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": true
+  },
+  {
+   "id": "a65b6f64-d7e1-451a-95e9-7de6e4c4cfc5",
+   "name": "Tag Open P1-P2 Incidents",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1540,
+    240
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "return $input.all().filter(i=>i.json.id).map(i=>({json:{section:\"Open P1-P2 Incidents\",...(i.json.fields||i.json),_id:i.json.id}})).concat($input.all().filter(i=>i.json.id).length?[]:[{json:{section:\"Open P1-P2 Incidents\",_empty:true}}]);"
+   }
+  },
+  {
+   "id": "d1f989fe-44a5-4854-af40-be5735a9c708",
+   "name": "New Bugs",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1760,
+    360
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblvYK2lpXgT1zYPK"
+    },
+    "filterByFormula": "",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": true
+  },
+  {
+   "id": "02b40ce6-eb46-4940-b8ae-43c6d50c85b9",
+   "name": "Tag New Bugs",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1980,
+    360
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "return $input.all().filter(i=>i.json.id).map(i=>({json:{section:\"New Bugs\",...(i.json.fields||i.json),_id:i.json.id}})).concat($input.all().filter(i=>i.json.id).length?[]:[{json:{section:\"New Bugs\",_empty:true}}]);"
+   }
+  },
+  {
+   "id": "0d85a70e-1a8e-4e08-ad44-1cdce4fc3526",
+   "name": "Inactive Contributors",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    2200,
+    480
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblsswkiEY1lsRMBJ"
+    },
+    "filterByFormula": "",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": true
+  },
+  {
+   "id": "23170024-7635-4cba-8835-6ef7ffb1c658",
+   "name": "Tag Inactive Contributors",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2420,
+    480
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "return $input.all().filter(i=>i.json.id).map(i=>({json:{section:\"Inactive Contributors\",...(i.json.fields||i.json),_id:i.json.id}})).concat($input.all().filter(i=>i.json.id).length?[]:[{json:{section:\"Inactive Contributors\",_empty:true}}]);"
+   }
+  },
+  {
+   "id": "b7a79ed8-db32-446a-98d3-a5c024927d18",
+   "name": "Node Numbers",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    2640,
+    600
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblvp0C0F6NdQvcdm"
+    },
+    "filterByFormula": "IS_AFTER({Week Of}, DATEADD(TODAY(), -7, 'days'))",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": true
+  },
+  {
+   "id": "2c4d1a3e-ef95-4bf9-b133-4e4792e6daf9",
+   "name": "Tag Node Numbers",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2860,
+    600
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "return $input.all().filter(i=>i.json.id).map(i=>({json:{section:\"Node Numbers\",...(i.json.fields||i.json),_id:i.json.id}})).concat($input.all().filter(i=>i.json.id).length?[]:[{json:{section:\"Node Numbers\",_empty:true}}]);"
+   }
+  },
+  {
+   "id": "55702c92-fff4-475b-9200-627129db97ea",
+   "name": "Format Data",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    3080,
+    300
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "const by={};for(const i of $input.all()){const s=i.json.section;by[s]=by[s]||[];if(!i.json._empty)by[s].push(i.json)}\nreturn [{json:{by,counts:Object.fromEntries(Object.entries(by).map(([k,v])=>[k,v.length]))}}];"
+   }
+  },
+  {
+   "id": "9847f707-0ba6-4db3-a6bd-00f7f4191f4d",
+   "name": "Brief Draft (template)",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    3300,
+    300
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "const {by,counts}=$json;const n=by['Node Numbers']||[];const sum=k=>n.reduce((a,x)=>a+(x[k]||0),0);\nconst sec=(t,l)=>`*${t}*\\n`+l.map(x=>'• '+x).join('\\n');\nconst g=by['At-Risk Gigs']||[];const p=by['Overdue Payments']||[];const inc=by['Open P1-P2 Incidents']||[];const b=by['New Bugs']||[];const c=by['Inactive Contributors']||[];\nconst text=['📅 Weekly Operating Review (template draft — swap for LLM later)',\nsec('Growth',[`Registrations: ${sum('Registrations')}`,`Verified: ${sum('Verified Contributors')}`,`Contributors on file: ${c.length}`,`At risk/inactive: ${c.filter(x=>['At Risk','Inactive'].includes(x.Segment)).length}`]),\nsec('Marketplace',[`Gigs: ${g.length}`,`Open/filling: ${g.filter(x=>['Published','Filling'].includes(x.Status)).length}`,`Avg fill: ${g.length?Math.round(g.reduce((a,x)=>a+(x['Fill Rate']||0),0)/g.length):0}%`]),\nsec('Financial',[`Payments: ${p.length}`,`Pending: ${p.filter(x=>x.Status==='Pending').length}`,`Paid ₦${p.filter(x=>x.Status==='Paid').reduce((a,x)=>a+(x['Total Amount']||0),0)}`,`Node revenue ₦${sum('Revenue')} / cost ₦${sum('Cost')}`]),\nsec('Product',[`Bugs: ${b.length}`,`Open: ${b.filter(x=>x.Status!=='Fixed').length}`,`Critical/High: ${b.filter(x=>['Critical','High'].includes(x.Severity)).length}`]),\nsec('Network/Nodes',n.map(x=>`${x.City}: ${x['Tasks Completed']}/${x['Tasks Dispatched']} tasks, ${x['Businesses Onboarded']} businesses`)),\nsec('Operations',[`Incidents: ${inc.length}`,`Unresolved: ${inc.filter(x=>x.Status!=='Resolved').length}`])].join('\\n\\n');\nreturn [{json:{text}}];"
+   }
+  },
+  {
+   "id": "38f697c9-af60-4fc7-b74a-eb55e15688d7",
+   "name": "Email Message",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    3520,
+    300
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "3dfb87ad-c1ed-43e8-83e0-897a3d73cac1",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "2b4ad081-9432-4811-a76b-bb18a3f3512d",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Notification — Project 8 - Weekly Operating Review (template draft, swap for LLM later)"
+      },
+      {
+       "id": "d9969c9d-e6e7-40f2-8ef5-02a063486ec3",
+       "name": "text",
+       "type": "string",
+       "value": "={{$json.text}}"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "9c6e96c4-8359-4b20-a457-fb454fa6a1ae",
+   "name": "Email Message → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    3740,
+    420
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 8 - Weekly Operating Review (template draft, swap for LLM later)",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "23e7b9ec-579d-4af3-ae80-c0ee61d6fa78",
+   "name": "Note",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    -300
+   ],
+   "parameters": {
+    "content": "Six Airtable searches -> Merge(append) -> Code formats -> Code template brief (swap for LLM later).",
+    "width": 500,
+    "height": 160
+   }
+  }
+ ],
+ "connections": {
+  "Schedule Trigger": {
+   "main": [
+    [
+     {
+      "node": "At-Risk Gigs",
+      "type": "main",
+      "index": 0
+     },
+     {
+      "node": "Overdue Payments",
+      "type": "main",
+      "index": 0
+     },
+     {
+      "node": "Open P1-P2 Incidents",
+      "type": "main",
+      "index": 0
+     },
+     {
+      "node": "New Bugs",
+      "type": "main",
+      "index": 0
+     },
+     {
+      "node": "Inactive Contributors",
+      "type": "main",
+      "index": 0
+     },
+     {
+      "node": "Node Numbers",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "At-Risk Gigs": {
+   "main": [
+    [
+     {
+      "node": "Tag At-Risk Gigs",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Tag At-Risk Gigs": {
+   "main": [
+    [
+     {
+      "node": "Merge",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Overdue Payments": {
+   "main": [
+    [
+     {
+      "node": "Tag Overdue Payments",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Tag Overdue Payments": {
+   "main": [
+    [
+     {
+      "node": "Merge",
+      "type": "main",
+      "index": 1
+     }
+    ]
+   ]
+  },
+  "Open P1-P2 Incidents": {
+   "main": [
+    [
+     {
+      "node": "Tag Open P1-P2 Incidents",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Tag Open P1-P2 Incidents": {
+   "main": [
+    [
+     {
+      "node": "Merge",
+      "type": "main",
+      "index": 2
+     }
+    ]
+   ]
+  },
+  "New Bugs": {
+   "main": [
+    [
+     {
+      "node": "Tag New Bugs",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Tag New Bugs": {
+   "main": [
+    [
+     {
+      "node": "Merge",
+      "type": "main",
+      "index": 3
+     }
+    ]
+   ]
+  },
+  "Inactive Contributors": {
+   "main": [
+    [
+     {
+      "node": "Tag Inactive Contributors",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Tag Inactive Contributors": {
+   "main": [
+    [
+     {
+      "node": "Merge",
+      "type": "main",
+      "index": 4
+     }
+    ]
+   ]
+  },
+  "Node Numbers": {
+   "main": [
+    [
+     {
+      "node": "Tag Node Numbers",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Tag Node Numbers": {
+   "main": [
+    [
+     {
+      "node": "Merge",
+      "type": "main",
+      "index": 5
+     }
+    ]
+   ]
+  },
+  "Merge": {
+   "main": [
+    [
+     {
+      "node": "Format Data",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Email Message": {
+   "main": [
+    [
+     {
+      "node": "Email Message → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Format Data": {
+   "main": [
+    [
+     {
+      "node": "Brief Draft (template)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Brief Draft (template)": {
+   "main": [
+    [
+     {
+      "node": "Email Message",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

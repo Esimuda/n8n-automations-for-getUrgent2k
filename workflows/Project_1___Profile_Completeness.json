@@ -1,0 +1,295 @@
+{
+ "name": "Project 1 - Profile Completeness",
+ "nodes": [
+  {
+   "id": "df723d8f-3cf8-45fa-bb71-a76efdc3e3a1",
+   "name": "Schedule Trigger",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "hours",
+       "hoursInterval": 24
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "3cd4478f-0262-4c62-bb0a-6030a69abc13",
+   "name": "Airtable Search",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblsswkiEY1lsRMBJ"
+    },
+    "filterByFormula": "",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "07a59b0d-d9c5-4d0d-82b0-1cd7336b448e",
+   "name": "Score Completeness",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "const F=['Name','Phone','Email','City','Skills','Availability','Experience Level','Payment Info Provided'];\nreturn items.map(i=>{const f=(i.json.fields||i.json);const have=F.filter(k=>{const v=f[k];return Array.isArray(v)?v.length>0:!!v}).length;const score=Math.round(have/F.length*100);const missing=F.filter(k=>{const v=f[k];return !(Array.isArray(v)?v.length:v)});return {json:{id:i.json.id,name:f.Name,score,missing:missing.join(', ')}}});"
+   }
+  },
+  {
+   "id": "f2bed53e-eef8-47a6-b6ea-8fd0406b5b90",
+   "name": "Airtable Update",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "operation": "update",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblsswkiEY1lsRMBJ"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "id": "={{$json.id}}",
+      "Profile Completeness": "={{$json.score}}"
+     },
+     "matchingColumns": [
+      "id"
+     ],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "7d9c5721-f564-4419-aea2-5cda7d84e859",
+   "name": "Below 80%",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    880,
+    200
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "877a1f39-94cb-4f92-9ed4-cc6d682dd559",
+       "leftValue": "={{$json.score}}",
+       "rightValue": 80,
+       "operator": {
+        "type": "number",
+        "operation": "lt"
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "looseTypeValidation": true,
+    "options": {}
+   }
+  },
+  {
+   "id": "b559b9ce-5ee5-4ae8-89f8-8955fcc7787d",
+   "name": "Email Message",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    1100,
+    200
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "c6cddcc1-c54b-4a61-b887-78f517967cc6",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "29a8e02d-aa08-4413-8343-a4d78fd5e399",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Notification — Project 1 - Profile Completeness"
+      },
+      {
+       "id": "ddb97b76-5179-4254-b517-7fd7eb8b44a4",
+       "name": "text",
+       "type": "string",
+       "value": "=Hi {{$json.name}}, your profile is {{$json.score}}% complete. Missing: {{$json.missing}}"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "ee4e871c-dd54-4c19-8c3b-934fe2e8e26b",
+   "name": "Email Message → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1320,
+    320
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 1 - Profile Completeness",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  }
+ ],
+ "connections": {
+  "Schedule Trigger": {
+   "main": [
+    [
+     {
+      "node": "Airtable Search",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Search": {
+   "main": [
+    [
+     {
+      "node": "Score Completeness",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Score Completeness": {
+   "main": [
+    [
+     {
+      "node": "Airtable Update",
+      "type": "main",
+      "index": 0
+     },
+     {
+      "node": "Below 80%",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Email Message": {
+   "main": [
+    [
+     {
+      "node": "Email Message → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Below 80%": {
+   "main": [
+    [
+     {
+      "node": "Email Message",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

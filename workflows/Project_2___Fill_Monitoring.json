@@ -1,0 +1,246 @@
+{
+ "name": "Project 2 - Fill Monitoring",
+ "nodes": [
+  {
+   "id": "c157b893-dc5d-4412-b2f6-50adb432987b",
+   "name": "Schedule Trigger",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "hours",
+       "hoursInterval": 4
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "e3bf8220-e0ab-4564-92f1-90e672784356",
+   "name": "Airtable Search",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblSAZtBJD7DuruFS"
+    },
+    "filterByFormula": "OR({Status}='Published', {Status}='Filling')",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "73debff2-3498-453f-972a-ccfd383211f1",
+   "name": "Flag",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "return items.map(item=>{const rate=Math.round((item.json.fields||item.json)['Fill Rate']||0);let flag='Green';if(rate<40)flag='Red';else if(rate<80)flag='Yellow';return {json:{id:item.json.id,title:(item.json.fields||item.json).Title,rate,flag}}});"
+   }
+  },
+  {
+   "id": "7a9de49a-f5b8-44d2-836f-16232468888f",
+   "name": "Is Red",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "3a78f06f-2406-47f9-bf9d-c15885991738",
+       "leftValue": "={{$json.flag}}",
+       "rightValue": "Red",
+       "operator": {
+        "type": "string",
+        "operation": "equals"
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "looseTypeValidation": true,
+    "options": {}
+   }
+  },
+  {
+   "id": "3472ca75-f49f-42e4-9816-5b2eb9024c2d",
+   "name": "Email Message",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    880,
+    0
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "bfc7175d-84eb-4989-8a01-74a284cbb0da",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "622dee64-0276-47bf-8adb-27facddb0e18",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Notification — Project 2 - Fill Monitoring"
+      },
+      {
+       "id": "f4558ece-cc56-4672-ba00-860835f10be9",
+       "name": "text",
+       "type": "string",
+       "value": "=⚠️ {{$json.title}} is at {{$json.rate}}% fill — needs intervention."
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "d7b14c7d-cd92-462d-8624-e6f97623d4a7",
+   "name": "Email Message → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1100,
+    120
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 2 - Fill Monitoring",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  }
+ ],
+ "connections": {
+  "Email Message": {
+   "main": [
+    [
+     {
+      "node": "Email Message → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Schedule Trigger": {
+   "main": [
+    [
+     {
+      "node": "Airtable Search",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Search": {
+   "main": [
+    [
+     {
+      "node": "Flag",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Flag": {
+   "main": [
+    [
+     {
+      "node": "Is Red",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Is Red": {
+   "main": [
+    [
+     {
+      "node": "Email Message",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

@@ -1,0 +1,13 @@
+# Command Center Dashboard (Airtable Interface) — already created & published
+- Interface: **GetUrgent2K Command Center** — id `pbdoghkyorywjDzEU` (published 2026-10-28)
+- Page: **Command Center** (dashboard) — id `pagJaXfPIALs4rvvE`
+  - View: https://airtable.com/appFGiMYmxwrcLgcv/pagJaXfPIALs4rvvE
+  - Edit: https://airtable.com/appFGiMYmxwrcLgcv/pagJaXfPIALs4rvvE/edit
+- Sections:
+  - **Users (Contributors):** total count, avg profile completeness; bars by City, Verification Status, Segment.
+  - **Gigs:** total, avg Fill Rate; bar by Status; grid sorted by Fill Rate asc (at-risk first).
+  - **Money (Payments):** sum Total Amount, count; bar of payout by Status; grid sorted by SLA Deadline.
+  - **Nodes:** sum Revenue, sum Cost; bars Tasks Completed by City, Revenue by City.
+  - **Incidents:** count; bars by Severity and Status; grid sorted by SLA Deadline.
+  - **Product (Bugs):** count; bar by Severity; grid newest first.
+- Optional manual polish: add filters (e.g. Status=Pending, Status≠Resolved) in the editor, then Publish.

@@ -1,0 +1,373 @@
+{
+ "name": "Project 2 - Deadline Alerts",
+ "nodes": [
+  {
+   "id": "b8b2b759-1de8-4c54-bc53-e7f801b49f47",
+   "name": "Schedule Trigger",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "days",
+       "triggerAtHour": 8
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "424f3c9a-c8b8-4a9e-9454-fb46b6ee187a",
+   "name": "Airtable Search",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblSAZtBJD7DuruFS"
+    },
+    "filterByFormula": "AND(IS_BEFORE({Deadline}, DATEADD(TODAY(), 3, 'days')), {Status}!='Closed')",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "77fbd092-3919-4779-a7f9-cd017eeb318f",
+   "name": "Level",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "return items.map(item=>{const f=(item.json.fields||item.json);const fr=f['Fill Rate']||0;const h=(new Date(f['Deadline'])-new Date())/36e5;let level='ok';\nif(h<=0)level='passed';else if(h<=24&&fr<80)level='escalate';else if(h<=72&&fr<60)level='warn';\nreturn {json:{id:item.json.id,title:f.Title,level,fill:Math.round(fr),source:'Failed Workflow',severity:'P2',description:`Gig \"${f.Title}\" deadline passed at ${Math.round(fr)}% fill (gig ${item.json.id}).`}}});"
+   }
+  },
+  {
+   "id": "26302f7c-667b-41d2-8768-38d01ff656df",
+   "name": "Route Level",
+   "type": "n8n-nodes-base.switch",
+   "typeVersion": 3.2,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "rules": {
+     "values": [
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "loose",
+         "version": 2
+        },
+        "conditions": [
+         {
+          "id": "241d75cc-1718-45ea-b7cd-c00215964c91",
+          "leftValue": "={{$json.level}}",
+          "rightValue": "warn",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "warn"
+      },
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "loose",
+         "version": 2
+        },
+        "conditions": [
+         {
+          "id": "d4320ae2-12e2-47b3-bd49-a504fde342e6",
+          "leftValue": "={{$json.level}}",
+          "rightValue": "escalate",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "escalate"
+      },
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "loose",
+         "version": 2
+        },
+        "conditions": [
+         {
+          "id": "ea53ccc7-5c4e-4930-a911-71fa97237f70",
+          "leftValue": "={{$json.level}}",
+          "rightValue": "passed",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "passed"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "38da6dc8-2d1b-490b-bbd1-757953f521ef",
+   "name": "Email Message",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    880,
+    200
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "8405d705-18e0-497a-a7ed-6bd6cd2dc2ca",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "adb063d6-1d83-468f-a933-2ab71c0cd718",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Notification — Project 2 - Deadline Alerts"
+      },
+      {
+       "id": "b7e50e75-ba5b-4f20-b72b-d741b762f082",
+       "name": "text",
+       "type": "string",
+       "value": "=⏰ {{$json.level.toUpperCase()}}: {{$json.title}} at {{$json.fill}}% fill"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "db13de00-9b72-4009-864f-9d7c56a9a5ae",
+   "name": "Email Message → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1100,
+    320
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 2 - Deadline Alerts",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "3da470c8-23fa-40df-bf38-5637c01eb6b4",
+   "name": "Create Incident (P6 sub-workflow)",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "typeVersion": 1.2,
+   "position": [
+    1320,
+    400
+   ],
+   "parameters": {
+    "workflowId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "HgYtJm2rRD2nqCsL"
+    },
+    "workflowInputs": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "source": "={{$json.source}}",
+      "description": "={{$json.description}}",
+      "severity": "={{$json.severity}}"
+     },
+     "matchingColumns": [],
+     "schema": [
+      {
+       "id": "source",
+       "displayName": "source",
+       "type": "string",
+       "display": true,
+       "required": false,
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "description",
+       "displayName": "description",
+       "type": "string",
+       "display": true,
+       "required": false,
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "severity",
+       "displayName": "severity",
+       "type": "string",
+       "display": true,
+       "required": false,
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      }
+     ]
+    },
+    "options": {
+     "waitForSubWorkflow": false
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Schedule Trigger": {
+   "main": [
+    [
+     {
+      "node": "Airtable Search",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Search": {
+   "main": [
+    [
+     {
+      "node": "Level",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Level": {
+   "main": [
+    [
+     {
+      "node": "Route Level",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Email Message": {
+   "main": [
+    [
+     {
+      "node": "Email Message → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Route Level": {
+   "main": [
+    [
+     {
+      "node": "Email Message",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Email Message",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Create Incident (P6 sub-workflow)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

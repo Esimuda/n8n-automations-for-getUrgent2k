@@ -1,0 +1,326 @@
+{
+ "name": "Project 6 - Incident Intake (Sub-workflow)",
+ "nodes": [
+  {
+   "id": "bd4d29b0-4089-4323-8925-47d11606487f",
+   "name": "Execute Workflow Trigger",
+   "type": "n8n-nodes-base.executeWorkflowTrigger",
+   "typeVersion": 1.1,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "workflowInputs": {
+     "values": [
+      {
+       "name": "source"
+      },
+      {
+       "name": "description"
+      },
+      {
+       "name": "severity"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "ef6c4fe9-9270-4025-8505-2f86c87238f8",
+   "name": "Default Severity",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "return items.map(i=>({json:{...i.json,severity:i.json.severity||'P3',source:i.json.source||'Failed Workflow'}}));"
+   }
+  },
+  {
+   "id": "2f195dcf-8dfa-4b88-a6a9-bd8d20b71c4b",
+   "name": "Airtable Create",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblKRs1e85t7XI9bw"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "Source": "={{$json.source}}",
+      "Severity": "={{$json.severity}}",
+      "Description": "={{$json.description}}",
+      "Status": "Open",
+      "Created Date": "={{$now.toISO()}}"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "3f3afe93-cc20-4d6d-8650-b93d1c52fadc",
+   "name": "Route Severity",
+   "type": "n8n-nodes-base.switch",
+   "typeVersion": 3.2,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "rules": {
+     "values": [
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "loose",
+         "version": 2
+        },
+        "conditions": [
+         {
+          "id": "b04254c1-67b7-4e38-9f33-2103e7d5dd0d",
+          "leftValue": "={{($json.fields||$json).Severity}}",
+          "rightValue": "P1",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "P1"
+      },
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "loose",
+         "version": 2
+        },
+        "conditions": [
+         {
+          "id": "9a4aaee3-e8e2-4b15-8f06-2aad9a78c576",
+          "leftValue": "={{($json.fields||$json).Severity}}",
+          "rightValue": "P2",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "P2"
+      },
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "loose",
+         "version": 2
+        },
+        "conditions": [
+         {
+          "id": "1022ab12-5f0c-4ad7-8283-e203c16655d7",
+          "leftValue": "={{($json.fields||$json).Severity}}",
+          "rightValue": "P3",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "P3"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "4ff3ad01-de04-4836-ab66-a2edbfcbd965",
+   "name": "Email Message",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    880,
+    200
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "40a7e085-d778-44ce-92ae-fb4f719d6305",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "43565cfd-8a02-4332-b8e1-a9684e24dcd3",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Notification — Project 6 - Incident Intake (Sub-workflow)"
+      },
+      {
+       "id": "9ee3a21e-cc89-4f03-899b-0f2f1e19a2b8",
+       "name": "text",
+       "type": "string",
+       "value": "=🚨 {{($json.fields||$json).Severity}} incident ({{($json.fields||$json).Source}}): {{($json.fields||$json).Description}}"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "3d96251d-9e1e-498d-a126-a093cd8cca3d",
+   "name": "Email Message → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1100,
+    320
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 6 - Incident Intake (Sub-workflow)",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  }
+ ],
+ "connections": {
+  "Execute Workflow Trigger": {
+   "main": [
+    [
+     {
+      "node": "Default Severity",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Default Severity": {
+   "main": [
+    [
+     {
+      "node": "Airtable Create",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Create": {
+   "main": [
+    [
+     {
+      "node": "Route Severity",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Email Message": {
+   "main": [
+    [
+     {
+      "node": "Email Message → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Route Severity": {
+   "main": [
+    [
+     {
+      "node": "Email Message",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Email Message",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

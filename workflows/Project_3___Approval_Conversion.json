@@ -1,0 +1,207 @@
+{
+ "name": "Project 3 - Approval Conversion",
+ "nodes": [
+  {
+   "id": "c58384aa-5354-4f6b-b665-39fdd1d16383",
+   "name": "Airtable Trigger",
+   "type": "n8n-nodes-base.airtableTrigger",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "pollTimes": {
+     "item": [
+      {
+       "mode": "everyMinute"
+      }
+     ]
+    },
+    "authentication": "airtableTokenApi",
+    "baseId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "tableId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tbl169BWKS5M54Rfc"
+    },
+    "triggerField": "Last Modified",
+    "additionalFields": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   }
+  },
+  {
+   "id": "48d1c86e-4b06-4bde-ad5b-671b2472e458",
+   "name": "Is Approved",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "94268b0e-22b7-4308-91cc-4245a81d2db6",
+       "leftValue": "={{($json.fields||$json).Status}}",
+       "rightValue": "Approved",
+       "operator": {
+        "type": "string",
+        "operation": "equals"
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "looseTypeValidation": true,
+    "options": {}
+   }
+  },
+  {
+   "id": "4e12db1a-a65c-4b4a-a850-574f36230158",
+   "name": "Create Gig",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblSAZtBJD7DuruFS"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "Title": "={{($json.fields||$json)['Client Name']}} - {{($json.fields||$json).Method}}",
+      "City": "={{($json.fields||$json).Location}}",
+      "Type": "={{($json.fields||$json).Method}}",
+      "Compensation": "={{($json.fields||$json)['Compensation Budget']}}",
+      "Required Participants": "={{($json.fields||$json)['Sample Size Requested']}}",
+      "Evidence Requirements": "={{($json.fields||$json)['Evidence Requirements']}}",
+      "Deadline": "={{($json.fields||$json).Deadline}}",
+      "Status": "Draft"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "c9938777-b201-4498-a61d-3ea06818ffe2",
+   "name": "Mark Converted",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "operation": "update",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tbl169BWKS5M54Rfc"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "id": "={{$('Is Approved').item.json.id}}",
+      "Status": "Converted"
+     },
+     "matchingColumns": [
+      "id"
+     ],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  }
+ ],
+ "connections": {
+  "Airtable Trigger": {
+   "main": [
+    [
+     {
+      "node": "Is Approved",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Is Approved": {
+   "main": [
+    [
+     {
+      "node": "Create Gig",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Create Gig": {
+   "main": [
+    [
+     {
+      "node": "Mark Converted",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

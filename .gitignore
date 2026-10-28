@@ -1,0 +1,13 @@
+# Secrets & local runtime (never commit)
+secrets/
+n8n-data/
+*.pid
+*.log
+
+# Dependencies
+node_modules/
+
+# Local backups / scratch
+gen/build.py.bak
+gen/env.local.sh
+.DS_Store

@@ -1,0 +1,264 @@
+{
+ "name": "Project 5 - Payment SLA Monitor",
+ "nodes": [
+  {
+   "id": "87a1151e-5d26-4af0-937f-51d70dad8f4c",
+   "name": "Schedule Trigger",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "days",
+       "triggerAtHour": 8
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "c135541e-db1d-4f3e-a11a-b72c1a13d58e",
+   "name": "Airtable Search",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "operation": "search",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblJEb1wA2PaCAs6V"
+    },
+    "filterByFormula": "AND({Status}='Pending', IS_BEFORE({SLA Deadline}, TODAY()))",
+    "options": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "bd95cb27-fe61-4177-b0de-f4996947c8e7",
+   "name": "Digest",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "const r=$input.all().map(i=>`#${(i.json.fields||i.json)['Payment ID']} ₦${(i.json.fields||i.json)['Total Amount']} (due ${(i.json.fields||i.json)['SLA Deadline']})`);return [{json:{text:`💸 ${r.length} overdue payments:\\n`+r.join('\\n'),source:'Failed Payment',severity:'P2',description:`${r.length} payments past 3-day SLA: `+r.join('; ')}}];"
+   }
+  },
+  {
+   "id": "9c9291ef-7e94-4647-a3b0-9c80f3473526",
+   "name": "Email Message",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "93db7dcb-bbe8-4df5-9de1-392d7d73bbbd",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "65082509-9218-4cc9-b18e-51294c1f1f50",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Notification — Project 5 - Payment SLA Monitor"
+      },
+      {
+       "id": "3dab286f-d374-4b12-a54d-f12f4323d3b9",
+       "name": "text",
+       "type": "string",
+       "value": "={{$json.text}}"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "51e0346f-81ee-4406-8c8f-231dfcd82a64",
+   "name": "Email Message → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    880,
+    120
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 5 - Payment SLA Monitor",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "bb60c469-b5d3-4f16-92da-86153cdf0eb7",
+   "name": "Create Incident (P6 sub-workflow)",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "typeVersion": 1.2,
+   "position": [
+    1100,
+    200
+   ],
+   "parameters": {
+    "workflowId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "HgYtJm2rRD2nqCsL"
+    },
+    "workflowInputs": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "source": "={{$json.source}}",
+      "description": "={{$json.description}}",
+      "severity": "={{$json.severity}}"
+     },
+     "matchingColumns": [],
+     "schema": [
+      {
+       "id": "source",
+       "displayName": "source",
+       "type": "string",
+       "display": true,
+       "required": false,
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "description",
+       "displayName": "description",
+       "type": "string",
+       "display": true,
+       "required": false,
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "severity",
+       "displayName": "severity",
+       "type": "string",
+       "display": true,
+       "required": false,
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      }
+     ]
+    },
+    "options": {
+     "waitForSubWorkflow": false
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Email Message": {
+   "main": [
+    [
+     {
+      "node": "Email Message → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Schedule Trigger": {
+   "main": [
+    [
+     {
+      "node": "Airtable Search",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Airtable Search": {
+   "main": [
+    [
+     {
+      "node": "Digest",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Digest": {
+   "main": [
+    [
+     {
+      "node": "Email Message",
+      "type": "main",
+      "index": 0
+     },
+     {
+      "node": "Create Incident (P6 sub-workflow)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

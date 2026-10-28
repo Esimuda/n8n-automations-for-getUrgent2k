@@ -1,0 +1,318 @@
+{
+ "name": "Project 2 - Gig Checklist",
+ "nodes": [
+  {
+   "id": "2558b49b-8ed2-4536-81b0-a6289958a393",
+   "name": "Airtable Trigger",
+   "type": "n8n-nodes-base.airtableTrigger",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "pollTimes": {
+     "item": [
+      {
+       "mode": "everyMinute"
+      }
+     ]
+    },
+    "authentication": "airtableTokenApi",
+    "baseId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "tableId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblSAZtBJD7DuruFS"
+    },
+    "triggerField": "Last Modified",
+    "additionalFields": {}
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   }
+  },
+  {
+   "id": "83a537e0-05a7-40f5-bdd2-e591028bb83d",
+   "name": "Is Draft",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "00cfa1fe-bc93-463f-9fde-6151854e209f",
+       "leftValue": "={{($json.fields||$json).Status}}",
+       "rightValue": "Draft",
+       "operator": {
+        "type": "string",
+        "operation": "equals"
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "looseTypeValidation": true,
+    "options": {}
+   }
+  },
+  {
+   "id": "663565bb-78bb-4898-bbca-15f4090a7412",
+   "name": "Checklist",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "return items.map(it=>{const f=(it.json.fields||it.json);const missing=[];\nif(!f['Compensation'])missing.push('Compensation');if(!f['City'])missing.push('City');\nif(!f['Screening Questions'])missing.push('Screening Questions');if(!f['Evidence Requirements'])missing.push('Evidence Requirements');\nif(!f['Deadline'])missing.push('Deadline');return {json:{id:it.json.id,title:f.Title,ready:missing.length===0,missing:missing.join(', ')}}});"
+   }
+  },
+  {
+   "id": "258fb283-e84e-4231-a78b-d493a7aaaa2d",
+   "name": "Ready?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "42b68332-a8ba-4f57-b64b-2591348ab678",
+       "leftValue": "={{$json.ready}}",
+       "rightValue": true,
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "looseTypeValidation": true,
+    "options": {}
+   }
+  },
+  {
+   "id": "64948bff-0dfe-4e64-b5a2-65087cee91e2",
+   "name": "Set Ready",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    880,
+    0
+   ],
+   "parameters": {
+    "operation": "update",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblSAZtBJD7DuruFS"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "id": "={{$json.id}}",
+      "Status": "Ready"
+     },
+     "matchingColumns": [
+      "id"
+     ],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  },
+  {
+   "id": "d95dc5a3-0e6b-4915-856d-f2645985b5e3",
+   "name": "Email Message",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    1100,
+    200
+   ],
+   "parameters": {
+    "mode": "manual",
+    "assignments": {
+     "assignments": [
+      {
+       "id": "cf89c53d-880d-4d99-8885-469f7fbed7ce",
+       "name": "to",
+       "type": "string",
+       "value": "babalolabowale01@gmail.com"
+      },
+      {
+       "id": "4be03810-fac0-4483-b607-46d9a57b520a",
+       "name": "subject",
+       "type": "string",
+       "value": "GetUrgent2K: Notification — Project 2 - Gig Checklist"
+      },
+      {
+       "id": "2a28a6e1-b3da-4102-aa56-49ccf43a0727",
+       "name": "text",
+       "type": "string",
+       "value": "=Gig {{$json.title}} ({{$json.id}}) is missing: {{$json.missing}}"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "633dbc37-cc01-42e6-8234-d72cf7a3d0bf",
+   "name": "Email Message → Outbox",
+   "type": "n8n-nodes-base.airtable",
+   "typeVersion": 2.1,
+   "position": [
+    1320,
+    320
+   ],
+   "parameters": {
+    "operation": "create",
+    "base": {
+     "__rl": true,
+     "mode": "id",
+     "value": "appFGiMYmxwrcLgcv"
+    },
+    "table": {
+     "__rl": true,
+     "mode": "id",
+     "value": "tblGleD2vdsbQ6bw4"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "To": "={{$json.to}}",
+      "Subject": "={{$json.subject}}",
+      "Body": "={{$json.text}}",
+      "Workflow": "Project 2 - Gig Checklist",
+      "Status": "Queued"
+     },
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "typecast": true
+    }
+   },
+   "credentials": {
+    "airtableTokenApi": {
+     "id": "pEhB0Hf7KgLJg9jW",
+     "name": "Airtable PAT - GetUrgent2K"
+    }
+   },
+   "alwaysOutputData": false
+  }
+ ],
+ "connections": {
+  "Airtable Trigger": {
+   "main": [
+    [
+     {
+      "node": "Is Draft",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Is Draft": {
+   "main": [
+    [
+     {
+      "node": "Checklist",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Checklist": {
+   "main": [
+    [
+     {
+      "node": "Ready?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Ready?": {
+   "main": [
+    [
+     {
+      "node": "Set Ready",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Email Message",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Email Message": {
+   "main": [
+    [
+     {
+      "node": "Email Message → Outbox",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

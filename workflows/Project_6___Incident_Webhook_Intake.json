@@ -1,0 +1,136 @@
+{
+ "name": "Project 6 - Incident Webhook Intake",
+ "nodes": [
+  {
+   "id": "986997c4-5ffc-441f-b318-fdd6354743f7",
+   "name": "Webhook",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "incident-intake",
+    "responseMode": "onReceived",
+    "options": {}
+   },
+   "webhookId": "34c74ca2-545d-554b-ab66-7260507f9346"
+  },
+  {
+   "id": "187dbfe6-dd0f-4533-a669-6bccdc9644a1",
+   "name": "Normalize",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "// Flatten Tally payload {data:{fields:[{label,value,options}]}} or plain JSON\nfunction flat(b){ if(b&&b.data&&Array.isArray(b.data.fields)){const o={};for(const f of b.data.fields){let v=f.value;if(Array.isArray(v)&&f.options){v=v.map(id=>(f.options.find(x=>x.id===id)||{}).text||id);if(f.type==='DROPDOWN'||f.type==='MULTIPLE_CHOICE')v=v[0];}o[f.label]=v;}return o;} return b||{}; }\n\nconst d=flat($input.first().json.body||$input.first().json);return [{json:{source:d.Source||d.source||'Support Form',severity:d.Severity||d.severity||'',description:d.Description||d.description||''}}];"
+   }
+  },
+  {
+   "id": "ff7da723-057d-4e6b-86f7-aa2e7226c61d",
+   "name": "Create Incident (P6 sub-workflow)",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "typeVersion": 1.2,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "workflowId": {
+     "__rl": true,
+     "mode": "id",
+     "value": "HgYtJm2rRD2nqCsL"
+    },
+    "workflowInputs": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "source": "={{$json.source}}",
+      "description": "={{$json.description}}",
+      "severity": "={{$json.severity}}"
+     },
+     "matchingColumns": [],
+     "schema": [
+      {
+       "id": "source",
+       "displayName": "source",
+       "type": "string",
+       "display": true,
+       "required": false,
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "description",
+       "displayName": "description",
+       "type": "string",
+       "display": true,
+       "required": false,
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "severity",
+       "displayName": "severity",
+       "type": "string",
+       "display": true,
+       "required": false,
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      }
+     ]
+    },
+    "options": {
+     "waitForSubWorkflow": false
+    }
+   }
+  },
+  {
+   "id": "ae7671c8-e218-4b13-866d-b06c121fc90e",
+   "name": "Note",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    -300
+   ],
+   "parameters": {
+    "content": "Optional: Tally 'Support / Incident' form -> /incident-intake, forwards to sub-workflow.",
+    "width": 500,
+    "height": 160
+   }
+  }
+ ],
+ "connections": {
+  "Webhook": {
+   "main": [
+    [
+     {
+      "node": "Normalize",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Normalize": {
+   "main": [
+    [
+     {
+      "node": "Create Incident (P6 sub-workflow)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}
